@@ -12,6 +12,7 @@ BALL_SPEED = 4
 
 # The main game window class
 class BreakoutWindow < Gosu::Window
+  attr_reader :bricks
   # Initialize the window, paddle, and ball objects
   def initialize
     super WINDOW_WIDTH, WINDOW_HEIGHT
@@ -191,7 +192,7 @@ class Ball
     end
 
     # Check for collisions with the bricks
-    @bricks.each do |brick|
+    @window.bricks.each do |brick|
       if collides?(brick) && !brick.broken
         # Reverse the vertical velocity and mark the brick as broken
         @vy *= -1
