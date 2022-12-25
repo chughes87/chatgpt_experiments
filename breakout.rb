@@ -10,6 +10,8 @@ PADDLE_HEIGHT = 20
 BALL_RADIUS = 10
 BALL_SPEED = 4
 
+PADDLE_SPEED = 100
+
 # The main game window class
 class BreakoutWindow < Gosu::Window
   attr_reader :bricks
@@ -31,7 +33,7 @@ class BreakoutWindow < Gosu::Window
     x = 0
     y = 0
     colors = [:red, :orange, :yellow, :green, :blue, :indigo, :violet]
-    10.times do
+    40.times do
       color = color_to_hex(colors[y / 20])
       brick = Brick.new(x, y, 60, 20, color)
       @bricks << brick
@@ -151,7 +153,7 @@ class Ball
     @window = window
     @paddle = paddle
     @x = WINDOW_WIDTH / 2
-    @y = PADDLE_HEIGHT + 10
+    @y = WINDOW_HEIGHT / 2
     @vx = BALL_SPEED
     @vy = -BALL_SPEED
     @width = BALL_RADIUS
