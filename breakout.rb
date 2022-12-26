@@ -52,17 +52,12 @@ class BreakoutWindow < Gosu::Window
 
   # Update the window
   def update
-    # Update the paddle
     @paddle.x -= PADDLE_SPEED if Gosu.button_down?(Gosu::KB_LEFT) && @paddle.x > @paddle.width / 2
     @paddle.x += PADDLE_SPEED if Gosu.button_down?(Gosu::KB_RIGHT) && @paddle.x < WINDOW_WIDTH - @paddle.width / 2
 
-    # Update the ball
     @ball.update(@paddle, @bricks)
 
-    # Check if the game is over
-    @game_over = true if @ball.y > WINDOW_HEIGHT
-
-    GameOverWindow.new.show if @game_over
+    GameOverWindow.new.show if @ball.y > WINDOW_HEIGHT
   end
 
   # Draw the game objects to the screen
