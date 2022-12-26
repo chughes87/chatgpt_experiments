@@ -8,62 +8,56 @@ PADDLE_HEIGHT = 20
 
 # Constant values for the ball size and movement speed
 BALL_RADIUS = 10
-BALL_SPEED = 4
+BALL_SPEED = 10
 
-PADDLE_SPEED = 100
+PADDLE_SPEED = 10
 
 # The main game window class
 class BreakoutWindow < Gosu::Window
   attr_reader :bricks
   # Initialize the window, paddle, and ball objects
   def initialize
-    super WINDOW_WIDTH, WINDOW_HEIGHT
+    super(WINDOW_WIDTH, WINDOW_HEIGHT)
     self.caption = "Breakout"
-
-    @paddle = Paddle.new(self)
-    @ball = Ball.new(self, @paddle)
-
+    # Initialize the ball at the center of the window
+    @ball = Ball.new(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, BALL_SPEED / 2, BALL_SPEED / 2, BALL_RADIUS*2, BALL_RADIUS*2)
+    # Initialize the paddle at the bottom center of the window
+    @paddle = Paddle.new(WINDOW_WIDTH / 2, WINDOW_HEIGHT - 20, 80, 10)
+    # Initialize the bricks
     @bricks = []
-    init_bricks
-
-    @font = Gosu::Font.new(self, "Arial", 48)
-  end
-
-  def init_bricks
-    x = 0
-    y = 0
-    colors = [:red, :orange, :yellow, :green, :blue, :indigo, :violet]
-    40.times do
-      color = color_to_hex(colors[y / 20])
-      brick = Brick.new(x, y, 60, 20, color)
-      @bricks << brick
-      x += brick.width
-      if x + brick.width > WINDOW_WIDTH
-        x = 0
-        y += brick.height
+    10.times do |i|
+      10.times do |j|
+        @bricks << Brick.new(i * 60 + 30, j * 20 + 20, 50, 10)
       end
     end
+    # Initialize the font
+    @font = Gosu::Font.new(20)
   end
 
-  # Update the game state
+  # Update the window
   def update
-    @paddle.update
-    @ball.update
-
-    @bricks.each do |brick|
-      if Gosu.distance(@ball.x, @ball.y, brick.x, brick.y) < BALL_RADIUS + brick.height / 2
-        if !brick.broken
-          brick.broken = true
-          if @ball.x < brick.x || @ball.x > brick.x + brick.width
-            # Collision on the left or right side of the brick
-            @ball.vx *= -1
-          else
-            # Collision on the top or bottom side of the brick
-            @ball.vy *= -1
-          end
-        end
-      end
+    # Update the paddle
+    if Gosu.button_down?(Gosu::KB_LEFT) && @paddle.x > @paddle.width / 2
+      @paddle.x -= PADDLE_SPEED
     end
+    if Gosu.button_down?(Gosu::KB_RIGHT) && @paddle.x < WINDOW_WIDTH - @paddle.width / 2
+      @paddle.x += PADDLE_SPEED
+    end
+
+    # Update the ball
+    @ball.update(@paddle, @bricks)
+
+    # Check if the game is over
+    if @ball.y > WINDOW_HEIGHT
+      @game_over = true
+    end
+  end
+  
+  # Show the game over screen
+  def game_over_screen
+    Gosu.draw_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0xff000000)
+    @font.draw_text("Game Over", WINDOW_WIDTH / 2 - @font.text_width("Game Over") / 2, WINDOW_HEIGHT / 2 - @font.height / 2, 0xffffffff)
+    close if Gosu.button_down?(Gosu::KB_ESCAPE)
   end
 
   def color_to_hex(color)
@@ -87,149 +81,136 @@ class BreakoutWindow < Gosu::Window
 
   # Draw the game objects to the screen
   def draw
-    if @ball.y <= WINDOW_HEIGHT
-      # Draw the paddle, ball, and bricks
-      @paddle.draw
-      @ball.draw
-      @bricks.each do |brick|
-        unless brick.broken
-          Gosu.draw_rect(brick.x, brick.y, brick.width, brick.height, brick.color)
-        end
-      end
-    else
-      # Ball has gone off the bottom of the screen, show the game over screen
-      Gosu.draw_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0xff000000)
-      @font.draw_text("Game Over", WINDOW_WIDTH / 2 - @font.text_width("Game Over") / 2, WINDOW_HEIGHT / 2 - @font.height / 2, 0xffffffff)
-      close if Gosu.button_down?(Gosu::KB_ESCAPE)
+    # Draw the ball
+    @ball.draw
+    # Draw the paddle
+    @paddle.draw
+    # Draw the bricks
+    @bricks.each do |brick|
+      brick.draw
     end
+    # Draw the score
+    @font.draw("Score: #{@bricks.filter(&:broken).size}", 10, 10, 0)
+
+    game_over_screen if @game_over
   end
 
+    # Handle keyboard input
+    def button_down(id)
+      case id
+      when Gosu::KbLeft
+        @paddle.move_left
+      when Gosu::KbRight
+        @paddle.move_right
+      when Gosu::KbEscape
+        close
+      end
+    end
 end
 
 
-# The paddle class
+# Define the Paddle class
 class Paddle
   attr_accessor :x, :y, :width, :height
-  # Initialize the paddle object at the bottom center of the screen
-  def initialize(window)
-    @window = window
-    @x = WINDOW_WIDTH / 2 - PADDLE_WIDTH / 2
-    @y = WINDOW_HEIGHT - PADDLE_HEIGHT - 10
-    @width = PADDLE_WIDTH
-    @height = PADDLE_HEIGHT
+
+  # Initialize the paddle
+  def initialize(x, y, width, height)
+    @x = x
+    @y = y
+    @width = width
+    @height = height
   end
 
-  # Update the paddle position based on keyboard input
+  # Update the paddle
   def update
-    if @window.button_down?(Gosu::KbLeft) && @x.positive?
-      @x -= 5
-    elsif @window.button_down?(Gosu::KbRight) && @x < WINDOW_WIDTH - PADDLE_WIDTH
-      @x += 5
-    end
+    # Move the paddle left if the left arrow key is being held down
+    @x -= PADDLE_SPEED if Gosu.button_down?(Gosu::KbLeft)
+    # Move the paddle right if the right arrow key is being held down
+    @x += PADDLE_SPEED if Gosu.button_down?(Gosu::KbRight)
+    # Keep the paddle within the window bounds
+    @x = [[@x, @width / 2].max, WINDOW_WIDTH - @width / 2].min
   end
 
-  # Draw the paddle to the screen
+  # Draw the paddle
   def draw
-    Gosu.draw_rect(@x, @y, PADDLE_WIDTH, PADDLE_HEIGHT, Gosu::Color::WHITE)
+    Gosu.draw_rect(@x - @width / 2, @y - @height / 2, @width, @height, Gosu::Color::WHITE)
   end
 
+  # Move the paddle left
   def move_left
     @x -= PADDLE_SPEED
-    @x = 0 if @x < 0
   end
 
+  # Move the paddle right
   def move_right
     @x += PADDLE_SPEED
-    @x = WINDOW_WIDTH - PADDLE_WIDTH if @x > WINDOW_WIDTH - PADDLE_WIDTH
   end
 end
 
-# The ball class
+# Define the Ball class
 class Ball
-  ZOrder = 1
-  attr_accessor :x, :y, :vy, :vx, :width, :height
-  # Initialize the ball object at the top center of the screen
-  def initialize(window, paddle)
-    @window = window
-    @paddle = paddle
-    @x = WINDOW_WIDTH / 2
-    @y = WINDOW_HEIGHT / 2
-    @vx = BALL_SPEED
-    @vy = -BALL_SPEED
-    @width = BALL_RADIUS
-    @height = BALL_RADIUS
+  attr_accessor :x, :y, :vx, :vy, :width, :height
+
+  # Initialize the ball
+  def initialize(x, y, vx, vy, width, height)
+    @x = x
+    @y = y
+    @vx = vx
+    @vy = vy
+    @width = width
+    @height = height
   end
 
-  def collides?(object)
-    # Check if the ball is within the horizontal bounds of the object
-    if object.x < @x && @x < object.x + object.width
-      # Check if the ball is within the vertical bounds of the object
-      if object.y < @y && @y < object.y + object.height
-        return true
-      end
-    end
-    false
-  end
-
-  # Update the ball position and check for collisions
-  def update
-    # Update the ball's position
+  # Update the ball
+  def update(paddle, bricks)
+    # Move the ball
     @x += @vx
     @y += @vy
 
-    # Check for collisions with the window bounds
-    if @x < 0 || @x > WINDOW_WIDTH
+    # Check for collisions with the walls
+    if @x - @width / 2 <= 0 || @x + @width / 2 >= WINDOW_WIDTH
       @vx *= -1
     end
-    if @y < 0
+    if @y - @height / 2 <= 0
       @vy *= -1
     end
 
     # Check for collisions with the paddle
-    if collides?(@paddle)
-      # Reverse the vertical velocity and increase the speed slightly
+    if @y + @height / 2 > paddle.y - paddle.height / 2 && @x > paddle.x - paddle.width / 2 && @x < paddle.x + paddle.width / 2
       @vy *= -1
-      @vx *= 1.1
-      @vy *= 1.1
     end
 
     # Check for collisions with the bricks
-    @window.bricks.each do |brick|
-      if collides?(brick) && !brick.broken
-        # Reverse the vertical velocity and mark the brick as broken
+    bricks.reject(&:broken).each do |brick|
+      if @x + @width / 2 > brick.x - brick.width / 2 && @x - @width / 2 < brick.x + brick.width / 2 && @y - @height / 2 < brick.y + brick.height / 2 && @y + @height / 2 > brick.y - brick.height / 2
         @vy *= -1
         brick.broken = true
       end
     end
   end
 
-  # Draw the ball to the screen
+  # Draw the ball
   def draw
-    # Use Gosu.draw_line to draw the ball
-    num_segments = 32
-    angle_step = 2 * Math::PI / num_segments
-    angle = 0
-    (0...num_segments).each do |i|
-      Gosu.draw_line(@x + Math.cos(angle) * BALL_RADIUS, @y + Math.sin(angle) * BALL_RADIUS,
-                     Gosu::Color::WHITE,
-                     @x + Math.cos(angle + angle_step) * BALL_RADIUS, @y + Math.sin(angle + angle_step) * BALL_RADIUS,
-                     Gosu::Color::WHITE,
-                     ZOrder)
-      angle += angle_step
-    end
+    Gosu.draw_rect(@x - @width / 2, @y - @height / 2, @width, @height, Gosu::Color::WHITE)
   end
 end
 
+# Define the Brick class
 class Brick
-  attr_accessor :x, :y, :width, :height, :color, :broken
+  attr_accessor :x, :y, :width, :height, :broken
 
-  def initialize(x, y, width, height, color)
+  # Initialize the brick
+  def initialize(x, y, width, height)
     @x = x
     @y = y
     @width = width
     @height = height
-    @color = color
     @broken = false
+  end
+
+  # Draw the brick
+  def draw
+    Gosu.draw_rect(@x - @width / 2, @y - @height / 2, @width, @height, Gosu::Color::RED) unless @broken
   end
 end
 
