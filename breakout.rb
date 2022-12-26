@@ -31,7 +31,7 @@ class BreakoutWindow < Gosu::Window
     super(WINDOW_WIDTH, WINDOW_HEIGHT)
     self.caption = 'Breakout'
     # Initialize the ball at the center of the window
-    @ball = Ball.new(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, BALL_SPEED / 2, BALL_SPEED / 2, BALL_RADIUS*2, BALL_RADIUS*2)
+    @ball = Ball.new(50, WINDOW_HEIGHT / 2, BALL_SPEED / 2, BALL_SPEED / 2, BALL_RADIUS*2, BALL_RADIUS*2)
     # Initialize the paddle at the bottom center of the window
     @paddle = Paddle.new(WINDOW_WIDTH / 2, WINDOW_HEIGHT - 20, 80, 10)
     # Initialize the bricks
@@ -61,13 +61,8 @@ class BreakoutWindow < Gosu::Window
 
     # Check if the game is over
     @game_over = true if @ball.y > WINDOW_HEIGHT
-  end
 
-  # Show the game over screen
-  def game_over_screen
-    Gosu.draw_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0xff000000)
-    @font.draw_text("Game Over", WINDOW_WIDTH / 2 - @font.text_width("Game Over") / 2, WINDOW_HEIGHT / 2 - @font.height / 2, 0xffffffff)
-    close if Gosu.button_down?(Gosu::KB_ESCAPE)
+    GameOverWindow.new.show if @game_over
   end
 
   # Draw the game objects to the screen
@@ -80,8 +75,6 @@ class BreakoutWindow < Gosu::Window
     @bricks.each(&:draw)
     # Draw the score
     @font.draw("Score: #{@bricks.filter(&:broken).size}", 10, 10, 0)
-
-    game_over_screen if @game_over
   end
 
   # Handle keyboard input
@@ -229,4 +222,34 @@ class Brick
   end
 end
 
-BreakoutWindow.new.show
+class StartWindow < Gosu::Window
+  def initialize
+    super(WINDOW_WIDTH, WINDOW_HEIGHT)
+    self.caption = 'Breakout'
+    @font = Gosu::Font.new(20)
+  end
+
+  def update
+    close if Gosu.button_down?(Gosu::KB_ESCAPE)
+  end
+
+  def draw
+    @font.draw_text("Press Space to Start", WINDOW_WIDTH / 2 - @font.text_width("Press Space to Start") / 2, WINDOW_HEIGHT / 2 - @font.height / 2, 0xffffffff)
+  end
+
+  def button_down(id)
+    case id
+    when Gosu::KbSpace
+      BreakoutWindow.new.show
+    end
+  end
+end
+
+class GameOverWindow < StartWindow
+  def draw
+    @font.draw_text("Game Over", WINDOW_WIDTH / 2 - @font.text_width("Game Over") / 2, WINDOW_HEIGHT / 2 - @font.height / 2, 0xffffffff)
+  end
+end
+
+# Show the start window when the game launches
+StartWindow.new.show
