@@ -10,7 +10,7 @@ PADDLE_HEIGHT = 20
 BALL_RADIUS = 10
 BALL_SPEED = 10
 
-PADDLE_SPEED = 10
+PADDLE_SPEED = 7
 
 COLORS = [
   0xffff0000, # red
@@ -20,49 +20,49 @@ COLORS = [
   0xff0000ff, # blue
   0xff4b0082, # indigo
   0xff8b00ff, # violet
-]
+].freeze
 
 # The main game window class
 class BreakoutWindow < Gosu::Window
   attr_reader :bricks
+
   # Initialize the window, paddle, and ball objects
   def initialize
     super(WINDOW_WIDTH, WINDOW_HEIGHT)
-    self.caption = "Breakout"
+    self.caption = 'Breakout'
     # Initialize the ball at the center of the window
     @ball = Ball.new(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, BALL_SPEED / 2, BALL_SPEED / 2, BALL_RADIUS*2, BALL_RADIUS*2)
     # Initialize the paddle at the bottom center of the window
     @paddle = Paddle.new(WINDOW_WIDTH / 2, WINDOW_HEIGHT - 20, 80, 10)
     # Initialize the bricks
+    # Initialize the font
+    @font = Gosu::Font.new(20)
+
+    init_bricks
+  end
+
+  def init_bricks
     @bricks = []
     10.times do |i|
       7.times do |j|
         @bricks << Brick.new(self, i * 60 + 30, j * 20 + 20, COLORS[j % 7])
       end
     end
-    # Initialize the font
-    @font = Gosu::Font.new(20)
   end
 
   # Update the window
   def update
     # Update the paddle
-    if Gosu.button_down?(Gosu::KB_LEFT) && @paddle.x > @paddle.width / 2
-      @paddle.x -= PADDLE_SPEED
-    end
-    if Gosu.button_down?(Gosu::KB_RIGHT) && @paddle.x < WINDOW_WIDTH - @paddle.width / 2
-      @paddle.x += PADDLE_SPEED
-    end
+    @paddle.x -= PADDLE_SPEED if Gosu.button_down?(Gosu::KB_LEFT) && @paddle.x > @paddle.width / 2
+    @paddle.x += PADDLE_SPEED if Gosu.button_down?(Gosu::KB_RIGHT) && @paddle.x < WINDOW_WIDTH - @paddle.width / 2
 
     # Update the ball
     @ball.update(@paddle, @bricks)
 
     # Check if the game is over
-    if @ball.y > WINDOW_HEIGHT
-      @game_over = true
-    end
+    @game_over = true if @ball.y > WINDOW_HEIGHT
   end
-  
+
   # Show the game over screen
   def game_over_screen
     Gosu.draw_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0xff000000)
@@ -77,9 +77,7 @@ class BreakoutWindow < Gosu::Window
     # Draw the paddle
     @paddle.draw
     # Draw the bricks
-    @bricks.each do |brick|
-      brick.draw
-    end
+    @bricks.each(&:draw)
     # Draw the score
     @font.draw("Score: #{@bricks.size}", 10, 10, 0)
 
@@ -89,12 +87,13 @@ class BreakoutWindow < Gosu::Window
     # Handle keyboard input
     def button_down(id)
       case id
-      when Gosu::KbLeft
-        @paddle.move_left
-      when Gosu::KbRight
-        @paddle.move_right
-      when Gosu::KbEscape
-        close
+        when Gosu::KbLeft
+          @paddle.move_left
+        when Gosu::KbRight
+          @paddle.move_right
+        when Gosu::KbEscape
+          close
+        end
       end
     end
 end
