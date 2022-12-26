@@ -45,7 +45,7 @@ class BreakoutWindow < Gosu::Window
     @bricks = []
     10.times do |i|
       7.times do |j|
-        @bricks << Brick.new(self, i * 60 + 30, j * 20 + 20, COLORS[j % 7])
+        @bricks << Brick.new(i * 60 + 30, j * 20 + 20, COLORS[j % 7])
       end
     end
   end
@@ -79,23 +79,22 @@ class BreakoutWindow < Gosu::Window
     # Draw the bricks
     @bricks.each(&:draw)
     # Draw the score
-    @font.draw("Score: #{@bricks.size}", 10, 10, 0)
+    @font.draw("Score: #{@bricks.filter(&:broken).size}", 10, 10, 0)
 
     game_over_screen if @game_over
   end
 
-    # Handle keyboard input
-    def button_down(id)
-      case id
-        when Gosu::KbLeft
-          @paddle.move_left
-        when Gosu::KbRight
-          @paddle.move_right
-        when Gosu::KbEscape
-          close
-        end
-      end
+  # Handle keyboard input
+  def button_down(id)
+    case id
+    when Gosu::KbLeft
+      @paddle.move_left
+    when Gosu::KbRight
+      @paddle.move_right
+    when Gosu::KbEscape
+      close
     end
+  end
 end
 
 
@@ -170,12 +169,13 @@ class Ball
 
     # Check for collisions with the bricks
     bricks.each do |brick|
-      collided = collides?(brick)
-      brick.collide(self) if collided
+      brick.broken = true if collides?(brick)
     end
   end
 
   def collides?(object)
+    return false if object.broken if object.respond_to?(:broken)
+
     object_left = object.x
     object_right = object.x + object.width
     object_top = object.y
@@ -190,11 +190,9 @@ class Ball
       # Collision detected on top or bottom of object
       if ball_top < object_bottom && ball_bottom > object_top
         @vy = -@vy
+      elsif ball_left < object_right && ball_right > object_left
+        @vx = -@vx
       end
-      # Collision detected on left or right of object
-      # if ball_left < object_right && ball_right > object_left
-      #   @vx = -@vx
-      # end
       true
     else
       false
@@ -210,23 +208,24 @@ end
 # Define the Brick class
 class Brick
   attr_reader :x, :y, :width, :height
+  attr_accessor :broken
 
-  def initialize(window, x, y, color)
-    @window = window
+  def initialize(x, y, color)
     @x = x
     @y = y
     @width = 50
     @height = 20
+    @broken = false
     @color = color
   end
 
   def draw
-    Gosu.draw_rect(@x, @y, @width, @height, @color, 1)
-  end
+    if @broken
+      # Do not draw the brick if it has been hit
+      return
+    end
 
-  def collide(ball)
-    # Remove the brick from the array
-    @window.bricks.delete(self)
+    Gosu.draw_rect(@x, @y, @width, @height, @color)
   end
 end
 
